@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+@layer base {
+  body {
+    background: linear-gradient(135deg, #15803d 0%, #166534 50%, #14532d 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    color: white;
+    position: relative;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      linear-gradient(90deg, rgba(255,255,255,0.03) 50%, transparent 50%),
+      linear-gradient(0deg, rgba(255,255,255,0.03) 50%, transparent 50%);
+    background-size: 80px 80px;
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  body::after {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-500 hover:bg-primary-600 text-white shadow-lg hover:shadow-xl;
+  }
+  
+  .btn-danger {
+    @apply btn bg-danger-500 hover:bg-danger-600 text-white shadow-lg hover:shadow-xl;
+  }
+  
+  .btn-success {
+    @apply btn bg-success-500 hover:bg-success-600 text-white shadow-lg hover:shadow-xl;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-accent-600 hover:bg-accent-700 text-white shadow-lg hover:shadow-xl;
+  }
+  
+  .btn-warning {
+    @apply btn bg-warning-500 hover:bg-warning-600 text-black shadow-lg hover:shadow-xl;
+  }
+  
+  .card {
+    @apply bg-white bg-opacity-15 backdrop-blur-lg rounded-xl p-6 shadow-2xl border-2 border-white border-opacity-25;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  }
+  
+  .input {
+    @apply w-full px-4 py-3 backdrop-blur-md rounded-lg border-2 text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-warning-400 focus:border-warning-400 transition-all duration-200;
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  
+  .input:focus {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+  }
+  
+  .player-card {
+    @apply card p-4 transition-all duration-300 hover:scale-105 cursor-pointer;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .player-card:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+  }
+  
+  .player-card.selected {
+    @apply ring-2 ring-warning-400;
+    background: rgba(251, 191, 36, 0.2);
+    border-color: rgba(251, 191, 36, 0.6);
+  }
+  
+  .impostor-card {
+    background: linear-gradient(135deg, #dc2626, #991b1b) !important;
+    border: 2px solid #fca5a5 !important;
+    box-shadow: 0 25px 50px -12px rgba(220, 38, 38, 0.4) !important;
+  }
+}
