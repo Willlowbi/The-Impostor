@@ -6,6 +6,8 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
   const [joinGameId, setJoinGameId] = useState('');
   const [username, setUsername] = useState('');
   const [enableBots, setEnableBots] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
+  const [gameIdError, setGameIdError] = useState('');
 
   // Cargar nombre guardado al montar el componente
   useEffect(() => {
@@ -24,9 +26,10 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
 
   const handleCreateGame = () => {
     if (!username.trim()) {
-      alert('Por favor ingresa tu nombre de usuario');
+      setUsernameError('Por favor ingresa tu nombre de usuario');
       return;
     }
+    setUsernameError('');
     onCreateGame(enableBots);
   };
 
@@ -41,13 +44,15 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
 
   const handleJoinGame = () => {
     if (!username.trim()) {
-      alert('Por favor ingresa tu nombre de usuario');
+      setUsernameError('Por favor ingresa tu nombre de usuario');
       return;
     }
     if (!joinGameId.trim()) {
-      alert('Por favor ingresa el código de la sala');
+      setGameIdError('Por favor ingresa el código de la sala');
       return;
     }
+    setUsernameError('');
+    setGameIdError('');
     onJoinGame(joinGameId.toUpperCase(), username);
   };
 
@@ -67,16 +72,27 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
         </div>
 
         <div className="space-y-4 mb-8">
-          <div className="relative">
-            <Icons.User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
-            <input
-              type="text"
-              placeholder="Ingresa tu nombre de usuario"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="input pl-12"
-              maxLength={20}
-            />
+          <div>
+            <div className="relative">
+              <Icons.User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
+              <input
+                type="text"
+                placeholder="Ingresa tu nombre de usuario"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setUsernameError(''); // Limpiar error cuando el usuario escriba
+                }}
+                className={`input pl-12 ${usernameError ? 'border-red-500 focus:border-red-500' : ''}`}
+                maxLength={20}
+              />
+            </div>
+            {usernameError && (
+              <div className="mt-2 text-red-400 text-sm text-left flex items-center">
+                <Icons.X className="w-4 h-4 mr-1" />
+                {usernameError}
+              </div>
+            )}
           </div>
 
           {/* Opción de Bots */}
@@ -111,14 +127,16 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
               <button 
                 onClick={handleCreateGame}
                 className="btn-primary w-full flex items-center justify-center space-x-2"
-                disabled={!username.trim()}
               >
                 <Icons.Stadium className="w-5 h-5" />
                 <span>Crear Nueva Sala</span>
               </button>
               
               <button 
-                onClick={() => setShowJoinForm(true)}
+                onClick={() => {
+                  setShowJoinForm(true);
+                  setUsernameError(''); // Limpiar error al cambiar de vista
+                }}
                 className="btn-warning w-full flex items-center justify-center space-x-2"
               >
                 <Icons.Door className="w-5 h-5" />
@@ -127,30 +145,43 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
             </>
           ) : (
             <div className="space-y-4 animate-slide-in">
-              <div className="relative">
-                <Icons.Cards className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
-                <input
-                  type="text"
-                  placeholder="Ingresa el código de la sala"
-                  value={joinGameId}
-                  onChange={(e) => setJoinGameId(e.target.value)}
-                  className="input pl-12"
-                  maxLength={6}
-                />
+              <div>
+                <div className="relative">
+                  <Icons.Cards className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
+                  <input
+                    type="text"
+                    placeholder="Ingresa el código de la sala"
+                    value={joinGameId}
+                    onChange={(e) => {
+                      setJoinGameId(e.target.value);
+                      setGameIdError(''); // Limpiar error cuando el usuario escriba
+                    }}
+                    className={`input pl-12 ${gameIdError ? 'border-red-500 focus:border-red-500' : ''}`}
+                    maxLength={6}
+                  />
+                </div>
+                {gameIdError && (
+                  <div className="mt-2 text-red-400 text-sm text-left flex items-center">
+                    <Icons.X className="w-4 h-4 mr-1" />
+                    {gameIdError}
+                  </div>
+                )}
               </div>
               
               <div className="flex space-x-3">
                 <button 
                   onClick={handleJoinGame}
                   className="btn-primary flex-1 flex items-center justify-center space-x-2"
-                  disabled={!username.trim() || !joinGameId.trim()}
                 >
                   <Icons.Door className="w-4 h-4" />
                   <span>Unirse</span>
                 </button>
                 
                 <button 
-                  onClick={() => setShowJoinForm(false)}
+                  onClick={() => {
+                    setShowJoinForm(false);
+                    setGameIdError(''); // Limpiar error al volver atrás
+                  }}
                   className="btn-secondary flex-1 flex items-center justify-center space-x-2"
                 >
                   <Icons.ArrowLeft className="w-4 h-4" />

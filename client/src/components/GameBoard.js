@@ -1,18 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from './Icons';
+import FlipCard from './FlipCard';
 
-const GameBoard = ({ gameState, playerId, onVote }) => {
+const GameBoard = ({ gameState, playerId, onVote, isSpectator = false }) => {
   const [selectedVote, setSelectedVote] = useState(null);
+  const [showFlipCard, setShowFlipCard] = useState(false);
+  const [lastRound, setLastRound] = useState(null);
+
+  // Detectar nueva ronda para mostrar la carta giratoria
+  useEffect(() => {
+    if (gameState && gameState.currentRound !== lastRound && !isSpectator) {
+      setLastRound(gameState.currentRound);
+      // Solo mostrar carta si el jugador está vivo y es una nueva ronda
+      const currentPlayer = gameState.players.find(p => p.id === playerId);
+      const isPlayerAlive = currentPlayer?.isAlive ?? false;
+      if (isPlayerAlive && gameState.round === 1) { // round === 1 significa inicio de ronda (primer turno de votación)
+        setShowFlipCard(true);
+      }
+    }
+  }, [gameState?.currentRound, gameState?.round, lastRound, isSpectator, gameState, playerId]);
 
   if (!gameState) return null;
 
   const alivePlayers = gameState.players.filter(p => p.isAlive);
+  const currentPlayer = gameState.players.find(p => p.id === playerId);
+  const isPlayerAlive = currentPlayer?.isAlive ?? false;
 
   const handleVote = (targetId) => {
-    if (gameState.hasVoted) return;
+    if (gameState.hasVoted || isSpectator || !isPlayerAlive) return;
     
     setSelectedVote(targetId);
     onVote(targetId);
+  };
+
+  const handleFlipCardComplete = () => {
+    setShowFlipCard(false);
   };
 
   return (
@@ -38,16 +60,24 @@ const GameBoard = ({ gameState, playerId, onVote }) => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Tu Carta */}
+          {/* Tu Carta / Vista Espectador */}
           <div className="lg:col-span-1">
             <div className="flex items-center justify-center mb-4">
               <Icons.Cards className="w-6 h-6 text-primary-400 mr-2" />
-              <h2 className="text-xl font-semibold">Tu Identidad</h2>
+              <h2 className="text-xl font-semibold">{isSpectator ? 'Modo Espectador' : 'Tu Identidad'}</h2>
             </div>
             <div className={`card text-center transform transition-all duration-300 hover:scale-105 ${
               gameState.isImpostor ? 'impostor-card' : ''
             }`}>
-              {gameState.isImpostor ? (
+              {isSpectator ? (
+                <div className="animate-fade-in">
+                  <Icons.Users className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
+                  <h3 className="text-2xl font-bold mb-2">ESPECTADOR</h3>
+                  <p className="text-yellow-200">
+                    Estás observando el juego. No puedes votar ni participar, pero puedes ver todo lo que sucede.
+                  </p>
+                </div>
+              ) : gameState.isImpostor ? (
                 <div className="animate-fade-in">
                   <Icons.Mask className="w-16 h-16 mx-auto mb-4 text-red-200" />
                   <h3 className="text-2xl font-bold mb-2">IMPOSTOR</h3>
@@ -97,6 +127,11 @@ const GameBoard = ({ gameState, playerId, onVote }) => {
                   }`}
                 >
                   <div className="flex items-center space-x-3">
+                    {player.playerOrder && (
+                      <div className="w-6 h-6 bg-warning-400 text-black rounded-full flex items-center justify-center text-xs font-bold">
+                        {player.playerOrder}
+                      </div>
+                    )}
                     {player.isBot ? (
                       <Icons.Robot className="w-4 h-4 text-primary-400" />
                     ) : (
@@ -132,6 +167,11 @@ const GameBoard = ({ gameState, playerId, onVote }) => {
                       className="flex items-center justify-between p-2 rounded-lg bg-danger-500 bg-opacity-20"
                     >
                       <div className="flex items-center space-x-3">
+                        {player.playerOrder && (
+                          <div className="w-6 h-6 bg-gray-500 text-gray-300 rounded-full flex items-center justify-center text-xs font-bold">
+                            {player.playerOrder}
+                          </div>
+                        )}
                         <Icons.Skull className="w-4 h-4 text-danger-400" />
                         <span className="font-medium text-gray-300 line-through">{player.username}</span>
                         {player.isBot && (
@@ -155,7 +195,35 @@ const GameBoard = ({ gameState, playerId, onVote }) => {
               <h2 className="text-xl font-semibold">Emite tu Voto</h2>
             </div>
             
-            {gameState.hasVoted ? (
+            {!isPlayerAlive && !isSpectator ? (
+              <div className="card text-center bg-red-500 bg-opacity-20">
+                <Icons.Skull className="w-12 h-12 mx-auto mb-3 text-red-400" />
+                <h3 className="text-lg font-bold mb-2">Has sido eliminado</h3>
+                <p className="text-red-200">
+                  Ya no puedes votar. Puedes observar el resto del juego hasta que termine.
+                </p>
+                <div className="flex items-center justify-center mt-3">
+                  <Icons.Settings className="w-4 h-4 text-gray-300 mr-2 animate-spin" />
+                  <p className="text-sm text-gray-300">
+                    Esperando votaciones de los jugadores vivos...
+                  </p>
+                </div>
+              </div>
+            ) : isSpectator ? (
+              <div className="card text-center bg-yellow-500 bg-opacity-20">
+                <Icons.Users className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+                <h3 className="text-lg font-bold mb-2">Modo Espectador</h3>
+                <p className="text-yellow-200">
+                  Estás observando el juego. No puedes votar, pero puedes ver todas las acciones en tiempo real.
+                </p>
+                <div className="flex items-center justify-center mt-3">
+                  <Icons.Settings className="w-4 h-4 text-gray-300 mr-2 animate-spin" />
+                  <p className="text-sm text-gray-300">
+                    Esperando votaciones de los jugadores...
+                  </p>
+                </div>
+              </div>
+            ) : gameState.hasVoted ? (
               <div className="card text-center bg-success-500 bg-opacity-20">
                 <Icons.Check className="w-12 h-12 mx-auto mb-3 text-success-400" />
                 <h3 className="text-lg font-bold mb-2">¡Voto Enviado!</h3>
@@ -182,6 +250,11 @@ const GameBoard = ({ gameState, playerId, onVote }) => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
+                        {player.playerOrder && (
+                          <div className="w-5 h-5 bg-warning-400 text-black rounded-full flex items-center justify-center text-xs font-bold">
+                            {player.playerOrder}
+                          </div>
+                        )}
                         <Icons.X className="w-4 h-4 text-danger-400" />
                         <span className="font-medium">{player.username}</span>
                         {player.isBot && (
@@ -234,6 +307,14 @@ const GameBoard = ({ gameState, playerId, onVote }) => {
           </div>
         </div>
       </div>
+      
+      {/* Carta giratoria de revelación de rol */}
+      {showFlipCard && (
+        <FlipCard 
+          isImpostor={gameState.isImpostor}
+          onAnimationComplete={handleFlipCardComplete}
+        />
+      )}
     </div>
   );
 };

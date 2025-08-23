@@ -18,6 +18,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('menu'); // menu, lobby, game, results
   const [voteResult, setVoteResult] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [isSpectator, setIsSpectator] = useState(false);
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -51,11 +52,17 @@ function App() {
       // Si hay ganador, esperar a que el usuario elija una opción
     });
 
+    socket.on('host-disconnected', (data) => {
+      alert(data.message);
+      resetGame();
+    });
+
     return () => {
       socket.off('connect');
       socket.off('disconnect');
       socket.off('game-state');
       socket.off('vote-result');
+      socket.off('host-disconnected');
     };
   }, []);
 
@@ -66,6 +73,7 @@ function App() {
     setUsername('');
     setCurrentScreen('menu');
     setVoteResult(null);
+    setIsSpectator(false);
   };
 
   const createGame = (enableBots = false) => {
@@ -83,7 +91,19 @@ function App() {
         setUsername(username);
         setGameId(gameId);
         setGameState(response.gameState);
-        setCurrentScreen('lobby');
+        setIsSpectator(response.isSpectator || false);
+        
+        if (response.isSpectator) {
+          // Si es espectador y el juego está en progreso, ir directamente al juego
+          if (response.gameState.status === 'playing') {
+            setCurrentScreen('game');
+          } else {
+            setCurrentScreen('lobby');
+          }
+          alert('Te has unido como espectador. Puedes observar el juego pero no puedes participar.');
+        } else {
+          setCurrentScreen('lobby');
+        }
       } else {
         alert(`Error: ${response.error}`);
       }
@@ -175,6 +195,7 @@ function App() {
           gameState={gameState}
           playerId={playerId}
           onVote={vote}
+          isSpectator={isSpectator}
         />
       )}
       
@@ -186,6 +207,7 @@ function App() {
           onContinueRound={continueRound}
           onExitGame={handleExitGame}
           onNewGame={handleNewGame}
+          isSpectator={isSpectator}
         />
       )}
     </div>

@@ -192,6 +192,15 @@ export const Icons = {
       <path d="M17 8s1.5-2 4-2c1.5 0 3 1 3 3s-1.5 3-3 3c-2.5 0-4-2-4-2" />
       <path d="M12 4s-2-2-6 0c-2 1-3 3-3 5 0 4 2 8 9 8s9-4 9-8c0-2-1-4-3-5-4-2-6 0-6 0z" />
     </svg>
+  ),
+
+  // Refrescar
+  Refresh: ({ className = "w-6 h-6", ...props }) => (
+    <svg className={className} {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path d="M4 4v6h6M20 20v-6h-6" />
+      <path d="M20 9A9 9 0 0 0 5 5l-1 1" />
+      <path d="M4 15a9 9 0 0 0 15 4l1-1" />
+    </svg>
   )
 };
 

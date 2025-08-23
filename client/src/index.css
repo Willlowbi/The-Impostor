@@ -111,4 +111,84 @@
     border: 2px solid #fca5a5 !important;
     box-shadow: 0 25px 50px -12px rgba(220, 38, 38, 0.4) !important;
   }
+
+  /* Animación de carta giratoria */
+  .flip-card {
+    background-color: transparent;
+    width: 300px;
+    height: 400px;
+    perspective: 1000px;
+    margin: 0 auto;
+  }
+
+  .flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 1.2s ease-in-out;
+    transform-style: preserve-3d;
+  }
+
+  .flip-card.flipped .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+
+  .flip-card-front, .flip-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+  }
+
+  .flip-card-front {
+    background: linear-gradient(145deg, #1e293b, #334155);
+    border: 3px solid #0f172a;
+  }
+
+  .flip-card-back {
+    background: linear-gradient(145deg, #7c3aed, #5b21b6);
+    transform: rotateY(180deg);
+    border: 3px solid #4c1d95;
+  }
+
+  .flip-card-front img, .flip-card-back img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.75rem;
+  }
+
+  /* Overlay de carta */
+  .card-reveal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .card-reveal-overlay.fade-out {
+    animation: fadeOut 0.5s ease-in-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
 }

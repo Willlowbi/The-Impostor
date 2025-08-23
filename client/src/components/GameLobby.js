@@ -158,7 +158,7 @@ const GameLobby = ({ gameState, username, onStartGame, onLeaveGame }) => {
             <div className="text-center p-4 bg-primary-500 bg-opacity-20 rounded-lg">
               <div className="flex items-center justify-center mb-2">
                 <Icons.Settings className="w-5 h-5 text-primary-400 mr-2 animate-spin" />
-                <p className="text-primary-200">Esperando que el anfitrión inicie el partido...</p>
+                <p className="text-primary-200">Esperando que el anfitrión inicie el juego...</p>
               </div>
               {!canStart && (
                 <p className="text-sm text-gray-300 mt-1">
@@ -186,6 +186,10 @@ const GameLobby = ({ gameState, username, onStartGame, onLeaveGame }) => {
           <div className="flex items-center justify-center space-x-1">
             <Icons.Vote className="w-4 h-4" />
             <span>Vota para eliminar jugadores y encontrar al impostor</span>
+          </div>
+          <div className="flex items-center justify-center space-x-1 text-xs text-warning-300">
+            <Icons.Refresh className="w-3 h-3" />
+            <span>Cada jugador recibirá un número de orden aleatorio en cada ronda</span>
           </div>
         </div>
       </div>
