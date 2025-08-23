@@ -11,9 +11,19 @@
     "install-all": "npm install && cd server && npm install && cd ../client && npm install"
   },
   "dependencies": {
-    "concurrently": "^7.6.0"
+    "axios": "^1.11.0",
+    "concurrently": "^7.6.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
   },
-  "keywords": ["multiplayer", "game", "impostor", "soccer"],
+  "keywords": [
+    "multiplayer",
+    "game",
+    "impostor",
+    "soccer"
+  ],
   "author": "",
   "license": "MIT"
 }
