@@ -1055,6 +1055,13 @@ io.on('connection', (socket) => {
     // 2) Reconexion por username (si coincide)
     const existingByName = game.players.find(p => p.username === username);
     if (existingByName) {
+      // Si este mismo socket ya representa a ese jugador en esta sala, tratar como join idempotente
+      const mappedInfo = playerSockets.get(socket.id);
+      if (existingByName.socketId === socket.id || (mappedInfo && mappedInfo.playerId === existingByName.id && mappedInfo.gameId === gameId)) {
+        callback({ success: true, playerId: existingByName.id, gameState: game.getGameState(existingByName.id) });
+        return;
+      }
+
       // Si el jugador con ese nombre tiene un socket activo, no permitir tomar su lugar
       const existingSocketActive = existingByName.socketId && io.sockets.sockets.get(existingByName.socketId);
       if (existingSocketActive) {
