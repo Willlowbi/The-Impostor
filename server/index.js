@@ -84,6 +84,16 @@ function broadcastVoteResult(game, result) {
   }
 }
 
+// Limpiar flags de espectador para una sala (tras volver al lobby)
+function clearSpectatorsForGame(gameId) {
+  for (const [sockId, info] of playerSockets.entries()) {
+    if (info.gameId === gameId && info.isSpectator) {
+      info.isSpectator = false;
+      playerSockets.set(sockId, info);
+    }
+  }
+}
+
 function cancelHostTimer(gameId) {
   const t = hostDisconnectTimers.get(gameId);
   if (t) {
@@ -1457,6 +1467,8 @@ io.on('connection', (socket) => {
 
     // Notificar a todos (incluye espectadores) el nuevo estado
     broadcastGameState(game);
+    // Limpiar flags de espectador para la nueva sesión en lobby
+    clearSpectatorsForGame(playerInfo.gameId);
 
     callback({ success: true, gameState: game.getGameState(playerInfo.playerId) });
   });
@@ -1474,6 +1486,8 @@ io.on('connection', (socket) => {
 
         // Notificar a todos (incluye espectadores) de la sala
         broadcastGameState(game);
+        // Limpiar flags de espectador al volver a lobby
+        clearSpectatorsForGame(playerInfo.gameId);
 
         if (callback) callback({ success: true, gameId: playerInfo.gameId, mode: 'reset' });
         return;

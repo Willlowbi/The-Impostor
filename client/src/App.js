@@ -64,6 +64,16 @@ function App() {
         setCurrentScreen('game');
       } else if (state.status === 'waiting') {
         setCurrentScreen('lobby');
+        // Si estamos en lobby y este cliente no figura como jugador, auto-convertir desde espectador a jugador
+        const isInPlayers = Array.isArray(state.players) && state.players.some(p => p.id === playerId);
+        if (!isInPlayers) {
+          setIsSpectator(false);
+          const name = (username && username.trim()) || (localStorage.getItem('impostor-username') || '').trim();
+          if (name && state.gameId) {
+            // Intentar unirse como jugador normal usando el mismo nombre
+            joinGame(state.gameId, name);
+          }
+        }
       }
     });
 
