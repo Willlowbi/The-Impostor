@@ -30,6 +30,8 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [isSpectator, setIsSpectator] = useState(false);
   const autoJoinTriedRef = useRef(false);
+  const playerIdRef = useRef(null);
+  const usernameRef = useRef('');
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -45,6 +47,8 @@ function App() {
             if (response?.success) {
               setPlayerId(response.playerId);
               setUsername(savedUsername || '');
+              playerIdRef.current = response.playerId;
+              usernameRef.current = savedUsername || '';
               setGameId(savedGameId);
               setGameState(response.gameState);
               setIsSpectator(response.isSpectator || false);
@@ -65,10 +69,12 @@ function App() {
       } else if (state.status === 'waiting') {
         setCurrentScreen('lobby');
         // Si estamos en lobby y este cliente no figura como jugador, auto-convertir desde espectador a jugador
-        const isInPlayers = Array.isArray(state.players) && state.players.some(p => p.id === playerId);
+        const currentPlayerId = playerIdRef.current;
+        const currentUsername = usernameRef.current;
+        const isInPlayers = Array.isArray(state.players) && state.players.some(p => p.id === currentPlayerId);
         if (!isInPlayers) {
           setIsSpectator(false);
-          const name = (username && username.trim()) || (localStorage.getItem('impostor-username') || '').trim();
+          const name = (currentUsername && currentUsername.trim()) || (localStorage.getItem('impostor-username') || '').trim();
           if (name && state.gameId) {
             // Intentar unirse como jugador normal usando el mismo nombre
             joinGame(state.gameId, name);
@@ -131,7 +137,9 @@ function App() {
     socket.emit('join-game', { gameId, username, playerId: savedPlayerId || null }, (response) => {
       if (response.success) {
         setPlayerId(response.playerId);
+        playerIdRef.current = response.playerId;
         setUsername(username);
+        usernameRef.current = username;
         setGameId(gameId);
         setGameState(response.gameState);
         setIsSpectator(response.isSpectator || false);
