@@ -1100,11 +1100,13 @@ io.on('connection', (socket) => {
       callback({ success: false, error: 'Nombre de usuario inválido' });
       return;
     }
-    // Enforce unicidad (case-insensitive)
-    const nameTaken = game.players.some(p => (p.username || '').toLowerCase() === cleanUsername.toLowerCase());
-    if (nameTaken) {
-      callback({ success: false, error: 'Ese nombre ya está en uso en esta sala' });
-      return;
+    // Enforce unicidad (case-insensitive) solo si ya hay jugadores en la sala
+    if (game.players.length > 0) {
+      const nameTaken = game.players.some(p => (p.username || '').toLowerCase() === cleanUsername.toLowerCase());
+      if (nameTaken) {
+        callback({ success: false, error: 'Ese nombre ya está en uso en esta sala' });
+        return;
+      }
     }
     const newPlayerId = uuidv4();
     const success = game.addPlayer(newPlayerId, cleanUsername, socket.id);
