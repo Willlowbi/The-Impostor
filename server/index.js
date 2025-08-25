@@ -9,8 +9,12 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "https://the-impostor.onrender.com",
-    methods: ["GET", "POST"]
+    origin: [
+      "https://the-impostor.onrender.com",
+      "http://localhost:3000"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -25,6 +29,68 @@ app.get("/ping", (req, res) => {
 // Game state management
 const games = new Map();
 const playerSockets = new Map();
+// Timers para manejar desconexión temporal del anfitrión (gracia para recarga)
+const hostDisconnectTimers = new Map(); // gameId -> timeout
+
+// Utilidades de broadcast (incluyendo espectadores)
+function broadcastGameState(game) {
+  try {
+    // Enviar estado específico a cada jugador
+    game.players.forEach(player => {
+      if (player.socketId) {
+        const playerSocket = io.sockets.sockets.get(player.socketId);
+        if (playerSocket) {
+          playerSocket.emit('game-state', game.getGameState(player.id));
+        }
+      }
+    });
+
+    // Enviar estado de espectador a todos los espectadores de la sala
+    for (const [sockId, info] of playerSockets.entries()) {
+      if (info.gameId === game.id && info.isSpectator) {
+        const spectatorSocket = io.sockets.sockets.get(sockId);
+        if (spectatorSocket) {
+          spectatorSocket.emit('game-state', game.getGameState(info.playerId, true));
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('broadcastGameState error:', e.message);
+  }
+}
+
+function broadcastVoteResult(game, result) {
+  try {
+    // Jugadores
+    game.players.forEach(player => {
+      if (player.socketId) {
+        const playerSocket = io.sockets.sockets.get(player.socketId);
+        if (playerSocket) {
+          playerSocket.emit('vote-result', result);
+        }
+      }
+    });
+    // Espectadores
+    for (const [sockId, info] of playerSockets.entries()) {
+      if (info.gameId === game.id && info.isSpectator) {
+        const spectatorSocket = io.sockets.sockets.get(sockId);
+        if (spectatorSocket) {
+          spectatorSocket.emit('vote-result', result);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('broadcastVoteResult error:', e.message);
+  }
+}
+
+function cancelHostTimer(gameId) {
+  const t = hostDisconnectTimers.get(gameId);
+  if (t) {
+    clearTimeout(t);
+    hostDisconnectTimers.delete(gameId);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Helpers para normalizar nombres y generar variantes de búsqueda (TheSportsDB)
@@ -963,15 +1029,13 @@ io.on('connection', (socket) => {
         playerSockets.set(socket.id, { playerId: existingById.id, gameId });
         socket.join(gameId);
 
-        // Broadcast estado
-        game.players.forEach(player => {
-          if (player.socketId) {
-            const playerSocket = io.sockets.sockets.get(player.socketId);
-            if (playerSocket) {
-              playerSocket.emit('game-state', game.getGameState(player.id));
-            }
-          }
-        });
+        // Si el que se reconecta es el host, cancelar temporizador de gracia
+        if (game.players[0]?.id === existingById.id) {
+          cancelHostTimer(gameId);
+        }
+
+        // Broadcast estado (incluye espectadores)
+        broadcastGameState(game);
 
         callback({ success: true, playerId: existingById.id, gameState: game.getGameState(existingById.id) });
         return;
@@ -981,6 +1045,13 @@ io.on('connection', (socket) => {
     // 2) Reconexion por username (si coincide)
     const existingByName = game.players.find(p => p.username === username);
     if (existingByName) {
+      // Si el jugador con ese nombre tiene un socket activo, no permitir tomar su lugar
+      const existingSocketActive = existingByName.socketId && io.sockets.sockets.get(existingByName.socketId);
+      if (existingSocketActive) {
+        callback({ success: false, error: 'Ese nombre ya está en uso en esta sala' });
+        return;
+      }
+
       for (const [sockId, info] of playerSockets.entries()) {
         if (info.playerId === existingByName.id) playerSockets.delete(sockId);
       }
@@ -988,14 +1059,8 @@ io.on('connection', (socket) => {
       playerSockets.set(socket.id, { playerId: existingByName.id, gameId });
       socket.join(gameId);
 
-      game.players.forEach(player => {
-        if (player.socketId) {
-          const playerSocket = io.sockets.sockets.get(player.socketId);
-          if (playerSocket) {
-            playerSocket.emit('game-state', game.getGameState(player.id));
-          }
-        }
-      });
+      // Broadcast estado (incluye espectadores)
+      broadcastGameState(game);
 
       callback({ success: true, playerId: existingByName.id, gameState: game.getGameState(existingByName.id) });
       return;
@@ -1020,8 +1085,19 @@ io.on('connection', (socket) => {
     }
 
     // 4) Alta de jugador nuevo
+    const cleanUsername = (username || '').trim();
+    if (!cleanUsername) {
+      callback({ success: false, error: 'Nombre de usuario inválido' });
+      return;
+    }
+    // Enforce unicidad (case-insensitive)
+    const nameTaken = game.players.some(p => (p.username || '').toLowerCase() === cleanUsername.toLowerCase());
+    if (nameTaken) {
+      callback({ success: false, error: 'Ese nombre ya está en uso en esta sala' });
+      return;
+    }
     const newPlayerId = uuidv4();
-    const success = game.addPlayer(newPlayerId, username, socket.id);
+    const success = game.addPlayer(newPlayerId, cleanUsername, socket.id);
 
     if (!success) {
       callback({ success: false, error: 'Game is full' });
@@ -1036,15 +1112,8 @@ io.on('connection', (socket) => {
       console.log(`Added bots to game ${gameId}. Total players: ${game.players.length}`);
     }
 
-    // Broadcast updated game state
-    game.players.forEach(player => {
-      if (player.socketId) {
-        const playerSocket = io.sockets.sockets.get(player.socketId);
-        if (playerSocket) {
-          playerSocket.emit('game-state', game.getGameState(player.id));
-        }
-      }
-    });
+    // Broadcast updated game state (incluye espectadores)
+    broadcastGameState(game);
 
     callback({ success: true, playerId: newPlayerId, gameState: game.getGameState(newPlayerId) });
   });
@@ -1061,36 +1130,22 @@ io.on('connection', (socket) => {
     const result = await game.startGame(totalRounds);
     if (result === true) {
       console.log(`Game ${playerInfo.gameId} started successfully`);
-      game.players.forEach(player => {
-        if (player.socketId) {
-          const playerSocket = io.sockets.sockets.get(player.socketId);
-          if (playerSocket) {
-            playerSocket.emit('game-state', game.getGameState(player.id));
-          }
-        }
-      });
+      broadcastGameState(game);
       callback({ success: true });
     } else if (result && result.immediateWin) {
       // (ya no debería ocurrir)
       console.log(`Immediate win in game ${playerInfo.gameId}: ${result.immediateWin}`);
-      game.players.forEach(player => {
-        if (player.socketId) {
-          const playerSocket = io.sockets.sockets.get(player.socketId);
-          if (playerSocket) {
-            playerSocket.emit('vote-result', {
-              winner: result.immediateWin,
-              eliminated: null,
-              tie: false,
-              roundFinished: true,
-              tournamentFinished: game.currentRound >= game.totalRounds,
-              currentRound: game.currentRound,
-              totalRounds: game.totalRounds,
-              scores: game.getScoresArray(),
-              isImpostorEliminated: false,
-              immediateWin: true
-            });
-          }
-        }
+      broadcastVoteResult(game, {
+        winner: result.immediateWin,
+        eliminated: null,
+        tie: false,
+        roundFinished: true,
+        tournamentFinished: game.currentRound >= game.totalRounds,
+        currentRound: game.currentRound,
+        totalRounds: game.totalRounds,
+        scores: game.getScoresArray(),
+        isImpostorEliminated: false,
+        immediateWin: true
       });
       callback({ success: true });
     } else {
@@ -1133,14 +1188,7 @@ io.on('connection', (socket) => {
         });
       } else {
         console.log(`Next round started normally in game ${playerInfo.gameId}`);
-        game.players.forEach(player => {
-          if (player.socketId) {
-            const playerSocket = io.sockets.sockets.get(player.socketId);
-            if (playerSocket) {
-              playerSocket.emit('game-state', game.getGameState(player.id));
-            }
-          }
-        });
+        broadcastGameState(game);
       }
       callback({ success: true });
     } else {
@@ -1171,15 +1219,8 @@ io.on('connection', (socket) => {
       setTimeout(() => {
         game.makeBotVotes();
 
-        // Broadcast updated game state
-        game.players.forEach(player => {
-          if (player.socketId) {
-            const playerSocket = io.sockets.sockets.get(player.socketId);
-            if (playerSocket) {
-              playerSocket.emit('game-state', game.getGameState(player.id));
-            }
-          }
-        });
+        // Broadcast updated game state (incluye espectadores)
+        broadcastGameState(game);
 
         // Check if all players have voted
         if (game.getAllVoted()) {
@@ -1194,22 +1235,14 @@ io.on('connection', (socket) => {
               continueVoting: result.continueVoting
             });
 
-            // Send vote results to all players
-            game.players.forEach(player => {
-              if (player.socketId) {
-                const playerSocket = io.sockets.sockets.get(player.socketId);
-                if (playerSocket) {
-                  playerSocket.emit('vote-result', result);
-
-                  // Si la ronda continúa, reenviar estado
-                  if (result.continueVoting) {
-                    setTimeout(() => {
-                      playerSocket.emit('game-state', game.getGameState(player.id));
-                    }, 3000);
-                  }
-                }
-              }
-            });
+            // Enviar resultados a jugadores y espectadores
+            broadcastVoteResult(game, result);
+            // Si la ronda continúa, reenviar estado tras pequeña pausa
+            if (result.continueVoting) {
+              setTimeout(() => {
+                broadcastGameState(game);
+              }, 3000);
+            }
           }, 1000);
         }
       }, 500);
@@ -1231,25 +1264,39 @@ io.on('connection', (socket) => {
         const isHost = game.players[0]?.id === playerInfo.playerId;
         
         if (isHost) {
-          console.log(`Host disconnected from game ${playerInfo.gameId}`);
-          // Notificar a todos los otros jugadores que el host se desconectó
-          game.players.forEach(player => {
-            if (player.id !== playerInfo.playerId && player.socketId) {
-              const playerSocket = io.sockets.sockets.get(player.socketId);
-              if (playerSocket) {
-                playerSocket.emit('host-disconnected', {
-                  message: 'El anfitrión ha abandonado el juego. Serás devuelto al menú principal.',
-                  reason: 'host_left'
-                });
+          console.log(`Host disconnected from game ${playerInfo.gameId} — starting grace timer`);
+          // Conceder un periodo de gracia para que el anfitrión recargue y se reconecte sin patear a nadie
+          cancelHostTimer(playerInfo.gameId);
+          const timer = setTimeout(() => {
+            console.log(`Host did not return to game ${playerInfo.gameId} — notifying players and deleting game`);
+            // Notificar a todos los otros jugadores/espectadores que el host abandonó
+            game.players.forEach(player => {
+              if (player.id !== playerInfo.playerId && player.socketId) {
+                const playerSocket = io.sockets.sockets.get(player.socketId);
+                if (playerSocket) {
+                  playerSocket.emit('host-disconnected', {
+                    message: 'El anfitrión ha abandonado el juego. Serás devuelto al menú principal.',
+                    reason: 'host_left'
+                  });
+                }
+              }
+            });
+            // También avisar a espectadores
+            for (const [sockId, info] of playerSockets.entries()) {
+              if (info.gameId === playerInfo.gameId && info.isSpectator) {
+                const spectatorSocket = io.sockets.sockets.get(sockId);
+                if (spectatorSocket) {
+                  spectatorSocket.emit('host-disconnected', {
+                    message: 'El anfitrión ha abandonado el juego. Serás devuelto al menú principal.',
+                    reason: 'host_left'
+                  });
+                }
               }
             }
-          });
-          
-          // Eliminar el juego después de un breve delay para asegurar que el mensaje llegue
-          setTimeout(() => {
             games.delete(playerInfo.gameId);
-            console.log(`Game ${playerInfo.gameId} deleted due to host disconnect`);
-          }, 1000);
+            hostDisconnectTimers.delete(playerInfo.gameId);
+          }, 10000); // 10s de gracia
+          hostDisconnectTimers.set(playerInfo.gameId, timer);
         } else {
           // Si no es el host, implementar lógica de desconexión según rol
           const disconnectedPlayer = game.players.find(p => p.id === playerInfo.playerId);
@@ -1359,14 +1406,7 @@ io.on('connection', (socket) => {
                 console.log(`Game continues with ${alivePlayersAfterDisconnect.length} players`);
                 
                 // Solo notificar estado actualizado
-                game.players.forEach(player => {
-                  if (player.socketId) {
-                    const playerSocket = io.sockets.sockets.get(player.socketId);
-                    if (playerSocket) {
-                      playerSocket.emit('game-state', game.getGameState(player.id));
-                    }
-                  }
-                });
+                broadcastGameState(game);
               }
             }
             
@@ -1376,14 +1416,7 @@ io.on('connection', (socket) => {
             // Solo limpiamos el mapeo de socket actual
             
             // Notificar a otros jugadores del estado (sin patear al jugador)
-            game.players.forEach(player => {
-              if (player.socketId) {
-                const playerSocket = io.sockets.sockets.get(player.socketId);
-                if (playerSocket) {
-                  playerSocket.emit('game-state', game.getGameState(player.id));
-                }
-              }
-            });
+            broadcastGameState(game);
 
             // Si el juego se queda realmente vacío (todos se fueron y limpiamos sockets), podríamos borrar la sala
             if (game.players.length === 0) {
@@ -1422,15 +1455,8 @@ io.on('connection', (socket) => {
     // Resetear el juego
     game.resetGame();
 
-    // Notificar a todos los jugadores el nuevo estado
-    game.players.forEach(player => {
-      if (player.socketId) {
-        const playerSocket = io.sockets.sockets.get(player.socketId);
-        if (playerSocket) {
-          playerSocket.emit('game-state', game.getGameState(player.id));
-        }
-      }
-    });
+    // Notificar a todos (incluye espectadores) el nuevo estado
+    broadcastGameState(game);
 
     callback({ success: true, gameState: game.getGameState(playerInfo.playerId) });
   });
@@ -1446,15 +1472,8 @@ io.on('connection', (socket) => {
         console.log(`Resetting game ${playerInfo.gameId}`);
         game.resetGame();
 
-        // Notificar a todos los jugadores de la sala
-        game.players.forEach(player => {
-          if (player.socketId) {
-            const playerSocket = io.sockets.sockets.get(player.socketId);
-            if (playerSocket) {
-              playerSocket.emit('game-state', game.getGameState(player.id));
-            }
-          }
-        });
+        // Notificar a todos (incluye espectadores) de la sala
+        broadcastGameState(game);
 
         if (callback) callback({ success: true, gameId: playerInfo.gameId, mode: 'reset' });
         return;
@@ -1468,6 +1487,61 @@ io.on('connection', (socket) => {
 
     console.log(`New game created: ${gameId}`);
     if (callback) callback({ success: true, gameId, mode: 'new' });
+  });
+
+  // Permite abandonar explícitamente el lobby
+  socket.on('leave-lobby', (callback) => {
+    const playerInfo = playerSockets.get(socket.id);
+    if (!playerInfo) {
+      if (callback) callback({ success: false, error: 'Player not found' });
+      return;
+    }
+    const game = games.get(playerInfo.gameId);
+    if (!game) {
+      if (callback) callback({ success: false, error: 'Game not found' });
+      return;
+    }
+
+    const isHost = game.players[0]?.id === playerInfo.playerId;
+    if (isHost) {
+      // Host abandona explícitamente → notificar y borrar sala
+      game.players.forEach(player => {
+        if (player.id !== playerInfo.playerId && player.socketId) {
+          const playerSocket = io.sockets.sockets.get(player.socketId);
+          if (playerSocket) {
+            playerSocket.emit('host-disconnected', {
+              message: 'El anfitrión ha abandonado el lobby. Serás devuelto al menú principal.',
+              reason: 'host_left'
+            });
+          }
+        }
+      });
+      // Avisar a espectadores
+      for (const [sockId, info] of playerSockets.entries()) {
+        if (info.gameId === playerInfo.gameId && info.isSpectator) {
+          const spectatorSocket = io.sockets.sockets.get(sockId);
+          if (spectatorSocket) {
+            spectatorSocket.emit('host-disconnected', {
+              message: 'El anfitrión ha abandonado el lobby. Serás devuelto al menú principal.',
+              reason: 'host_left'
+            });
+          }
+        }
+      }
+      games.delete(playerInfo.gameId);
+      playerSockets.delete(socket.id);
+      if (callback) callback({ success: true });
+      return;
+    }
+
+    // Jugador normal sale del lobby
+    game.players = game.players.filter(p => p.id !== playerInfo.playerId);
+    playerSockets.delete(socket.id);
+
+    // Notificar estado actualizado (incluye espectadores)
+    broadcastGameState(game);
+
+    if (callback) callback({ success: true });
   });
 });
 

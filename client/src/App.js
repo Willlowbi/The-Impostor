@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './index.css';
 
@@ -8,7 +8,17 @@ import GameLobby from './components/GameLobby';
 import GameBoard from './components/GameBoard';
 import VoteResults from './components/VoteResults';
 
-const socket = io('http://localhost:5000');
+// Seleccionar endpoint de Socket.IO según entorno (dev/prod)
+const SOCKET_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+  ? 'http://localhost:5000'
+  : 'https://the-impostor.onrender.com';
+const socket = io(SOCKET_URL, { withCredentials: true });
+
+const STORAGE_KEYS = {
+  gameId: 'impostor-gameId',
+  playerId: 'impostor-playerId',
+  username: 'impostor-username'
+};
 
 function App() {
   const [gameState, setGameState] = useState(null);
@@ -19,10 +29,29 @@ function App() {
   const [voteResult, setVoteResult] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [isSpectator, setIsSpectator] = useState(false);
+  const autoJoinTriedRef = useRef(false);
 
   useEffect(() => {
     socket.on('connect', () => {
       setConnectionStatus('connected');
+      // Intentar reingresar automáticamente solo una vez por conexión
+      if (!autoJoinTriedRef.current) {
+        autoJoinTriedRef.current = true;
+        const savedGameId = localStorage.getItem(STORAGE_KEYS.gameId);
+        const savedPlayerId = localStorage.getItem(STORAGE_KEYS.playerId);
+        const savedUsername = localStorage.getItem(STORAGE_KEYS.username);
+        if (savedGameId && (savedPlayerId || savedUsername)) {
+          socket.emit('join-game', { gameId: savedGameId, username: savedUsername || '', playerId: savedPlayerId || null }, (response) => {
+            if (response?.success) {
+              setPlayerId(response.playerId);
+              setUsername(savedUsername || '');
+              setGameId(savedGameId);
+              setGameState(response.gameState);
+              setIsSpectator(response.isSpectator || false);
+            }
+          });
+        }
+      }
     });
 
     socket.on('disconnect', () => {
@@ -74,6 +103,9 @@ function App() {
     setCurrentScreen('menu');
     setVoteResult(null);
     setIsSpectator(false);
+    // Limpiar persistencia
+    localStorage.removeItem(STORAGE_KEYS.gameId);
+    localStorage.removeItem(STORAGE_KEYS.playerId);
   };
 
   const createGame = (enableBots = false) => {
@@ -85,13 +117,18 @@ function App() {
   };
 
   const joinGame = (gameId, username) => {
-    socket.emit('join-game', { gameId, username }, (response) => {
+    const savedPlayerId = localStorage.getItem(STORAGE_KEYS.playerId);
+    socket.emit('join-game', { gameId, username, playerId: savedPlayerId || null }, (response) => {
       if (response.success) {
         setPlayerId(response.playerId);
         setUsername(username);
         setGameId(gameId);
         setGameState(response.gameState);
         setIsSpectator(response.isSpectator || false);
+        // Persistir sesión
+        localStorage.setItem(STORAGE_KEYS.gameId, gameId);
+        localStorage.setItem(STORAGE_KEYS.playerId, response.playerId);
+        localStorage.setItem(STORAGE_KEYS.username, username);
         
         if (response.isSpectator) {
           // Si es espectador y el juego está en progreso, ir directamente al juego
@@ -138,8 +175,15 @@ function App() {
   };
 
   const handleExitGame = () => {
-    // Salir completamente del juego
-    resetGame();
+    // Salir completamente del juego (avisar al servidor si estamos en una sala)
+    const savedGameId = localStorage.getItem(STORAGE_KEYS.gameId);
+    if (savedGameId) {
+      socket.emit('leave-lobby', () => {
+        resetGame();
+      });
+    } else {
+      resetGame();
+    }
   };
 
   const handleNewGame = () => {
@@ -186,7 +230,11 @@ function App() {
           gameState={gameState}
           username={username}
           onStartGame={startGame}
-          onLeaveGame={resetGame}
+          onLeaveGame={() => {
+            socket.emit('leave-lobby', () => {
+              resetGame();
+            });
+          }}
         />
       )}
       

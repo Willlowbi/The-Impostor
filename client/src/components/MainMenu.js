@@ -26,7 +26,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
 
   const handleCreateGame = () => {
     if (!username.trim()) {
-      setUsernameError('Por favor ingresa tu nombre de usuario');
+      setUsernameError('Por favor ingresa nombre de usuario');
       return;
     }
     setUsernameError('');
@@ -44,7 +44,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
 
   const handleJoinGame = () => {
     if (!username.trim()) {
-      setUsernameError('Por favor ingresa tu nombre de usuario');
+      setUsernameError('Por favor ingresa nombre de usuario');
       return;
     }
     if (!joinGameId.trim()) {
@@ -77,7 +77,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
               <Icons.User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
               <input
                 type="text"
-                placeholder="Ingresa tu nombre de usuario"
+                placeholder="Ingresa nombre de usuario"
                 value={username}
                 onChange={(e) => {
                   setUsername(e.target.value);
@@ -150,10 +150,11 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
                   <Icons.Cards className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
                   <input
                     type="text"
-                    placeholder="Ingresa el código de la sala"
+                    placeholder="Ingresar código de sala"
                     value={joinGameId}
                     onChange={(e) => {
-                      setJoinGameId(e.target.value);
+                      const upper = (e.target.value || '').toUpperCase();
+                      setJoinGameId(upper);
                       setGameIdError(''); // Limpiar error cuando el usuario escriba
                     }}
                     className={`input pl-12 ${gameIdError ? 'border-red-500 focus:border-red-500' : ''}`}
