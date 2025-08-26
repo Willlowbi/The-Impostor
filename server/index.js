@@ -1098,6 +1098,13 @@ io.on('connection', (socket) => {
         gameState: game.getGameState(spectatorId, true),
         isSpectator: true
       });
+
+      // Notificar a todos en la sala que se unió un espectador (mensaje en tiempo real)
+      try {
+        io.to(gameId).emit('spectator-joined', { username });
+      } catch (e) {
+        console.warn('spectator-joined emit error:', e.message);
+      }
       return;
     }
 

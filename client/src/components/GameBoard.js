@@ -157,7 +157,7 @@ const GameBoard = ({ gameState, playerId, onVote, isSpectator = false }) => {
             {gameState.players.filter(p => !p.isAlive).length > 0 && (
               <>
                 <div className="flex items-center justify-center mt-6 mb-3">
-                  <Icons.Skull className="w-5 h-5 text-gray-400 mr-2" />
+                  <Icons.Mask className="w-5 h-5 text-gray-400 mr-2" />
                   <h3 className="text-lg font-semibold text-gray-400">Eliminados</h3>
                 </div>
                 <div className="space-y-2">
@@ -172,7 +172,7 @@ const GameBoard = ({ gameState, playerId, onVote, isSpectator = false }) => {
                             {player.playerOrder}
                           </div>
                         )}
-                        <Icons.Skull className="w-4 h-4 text-danger-400" />
+                        <Icons.Mask className="w-4 h-4 text-danger-400" />
                         <span className="font-medium text-gray-300 line-through">{player.username}</span>
                         {player.isBot && (
                           <span className="text-xs px-1 py-0.5 bg-gray-500 bg-opacity-30 text-gray-300 rounded">
@@ -197,7 +197,7 @@ const GameBoard = ({ gameState, playerId, onVote, isSpectator = false }) => {
             
             {!isPlayerAlive && !isSpectator ? (
               <div className="card text-center bg-red-500 bg-opacity-20">
-                <Icons.Skull className="w-12 h-12 mx-auto mb-3 text-red-400" />
+                <Icons.Mask className="w-12 h-12 mx-auto mb-3 text-red-400" />
                 <h3 className="text-lg font-bold mb-2">Has sido eliminado</h3>
                 <p className="text-red-200">
                   Ya no puedes votar. Puedes observar el resto del juego hasta que termine.

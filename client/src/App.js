@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import './index.css';
 
@@ -7,11 +7,16 @@ import MainMenu from './components/MainMenu';
 import GameLobby from './components/GameLobby';
 import GameBoard from './components/GameBoard';
 import VoteResults from './components/VoteResults';
+import { ToastProvider, useToast } from './components/Toast';
 
 // Seleccionar endpoint de Socket.IO según entorno (dev/prod)
-const SOCKET_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+// - En desarrollo con CRA (localhost:3000) conectamos a 5000
+// - En producción usamos el mismo origen que sirve la app
+const SOCKET_URL = (typeof window !== 'undefined'
+  && window.location.hostname === 'localhost'
+  && (window.location.port === '3000' || window.location.port === '5173'))
   ? 'http://localhost:5000'
-  : 'https://the-impostor.onrender.com';
+  : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
 const socket = io(SOCKET_URL, { withCredentials: true });
 
 const STORAGE_KEYS = {
@@ -20,7 +25,7 @@ const STORAGE_KEYS = {
   username: 'impostor-username'
 };
 
-function App() {
+function InnerApp() {
   const [gameState, setGameState] = useState(null);
   const [playerId, setPlayerId] = useState(null);
   const [gameId, setGameId] = useState(null);
@@ -32,6 +37,42 @@ function App() {
   const autoJoinTriedRef = useRef(false);
   const playerIdRef = useRef(null);
   const usernameRef = useRef('');
+  const { showToast } = useToast();
+  const lastStatusRef = useRef(null);
+
+  // joinGame debe declararse antes de usarlo en efectos/dependencias
+  const joinGame = useCallback((gameId, username) => {
+    const savedPlayerId = localStorage.getItem(STORAGE_KEYS.playerId);
+    socket.emit('join-game', { gameId, username, playerId: savedPlayerId || null }, (response) => {
+      if (response.success) {
+        setPlayerId(response.playerId);
+        playerIdRef.current = response.playerId;
+        setUsername(username);
+        usernameRef.current = username;
+        setGameId(gameId);
+        setGameState(response.gameState);
+        setIsSpectator(response.isSpectator || false);
+        // Persistir sesión
+        localStorage.setItem(STORAGE_KEYS.gameId, gameId);
+        localStorage.setItem(STORAGE_KEYS.playerId, response.playerId);
+        localStorage.setItem(STORAGE_KEYS.username, username);
+        
+        if (response.isSpectator) {
+          // Si es espectador y el juego está en progreso, ir directamente al juego
+          if (response.gameState.status === 'playing') {
+            setCurrentScreen('game');
+          } else {
+            setCurrentScreen('lobby');
+          }
+          showToast('Te has unido como espectador. Puedes observar el juego pero no puedes participar.', { type: 'warning', duration: 4000 });
+        } else {
+          setCurrentScreen('lobby');
+        }
+      } else {
+        showToast(`Error: ${response.error}`, { type: 'danger', duration: 4000 });
+      }
+    });
+  }, [showToast]);
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -58,12 +99,24 @@ function App() {
       }
     });
 
+    socket.on('spectator-joined', ({ username: spectatorName }) => {
+      const name = spectatorName || 'Un jugador';
+      // Evitar duplicar toast al propio espectador (ya se muestra uno al unirse)
+      if ((usernameRef.current || '').trim() === (spectatorName || '').trim()) return;
+      showToast(`El jugador ${name} se ha unido a la sala como espectador`, { type: 'warning', duration: 3500 });
+    });
+
     socket.on('disconnect', () => {
       setConnectionStatus('disconnected');
     });
 
     socket.on('game-state', (state) => {
       setGameState(state);
+      // Toast de inicio de juego: transición waiting -> playing
+      if (lastStatusRef.current !== 'playing' && state.status === 'playing') {
+        showToast('¡El juego ha comenzado!', { type: 'success', duration: 3000 });
+      }
+      lastStatusRef.current = state.status;
       if (state.status === 'playing') {
         setCurrentScreen('game');
       } else if (state.status === 'waiting') {
@@ -98,18 +151,19 @@ function App() {
     });
 
     socket.on('host-disconnected', (data) => {
-      alert(data.message);
+      showToast(data.message || 'El anfitrión ha abandonado el juego.', { type: 'danger', duration: 4500 });
       resetGame();
     });
 
     return () => {
       socket.off('connect');
+      socket.off('spectator-joined');
       socket.off('disconnect');
       socket.off('game-state');
       socket.off('vote-result');
       socket.off('host-disconnected');
     };
-  }, []);
+  }, [joinGame, showToast]);
 
   const resetGame = () => {
     setGameState(null);
@@ -132,43 +186,12 @@ function App() {
     });
   };
 
-  const joinGame = (gameId, username) => {
-    const savedPlayerId = localStorage.getItem(STORAGE_KEYS.playerId);
-    socket.emit('join-game', { gameId, username, playerId: savedPlayerId || null }, (response) => {
-      if (response.success) {
-        setPlayerId(response.playerId);
-        playerIdRef.current = response.playerId;
-        setUsername(username);
-        usernameRef.current = username;
-        setGameId(gameId);
-        setGameState(response.gameState);
-        setIsSpectator(response.isSpectator || false);
-        // Persistir sesión
-        localStorage.setItem(STORAGE_KEYS.gameId, gameId);
-        localStorage.setItem(STORAGE_KEYS.playerId, response.playerId);
-        localStorage.setItem(STORAGE_KEYS.username, username);
-        
-        if (response.isSpectator) {
-          // Si es espectador y el juego está en progreso, ir directamente al juego
-          if (response.gameState.status === 'playing') {
-            setCurrentScreen('game');
-          } else {
-            setCurrentScreen('lobby');
-          }
-          alert('Te has unido como espectador. Puedes observar el juego pero no puedes participar.');
-        } else {
-          setCurrentScreen('lobby');
-        }
-      } else {
-        alert(`Error: ${response.error}`);
-      }
-    });
-  };
+  
 
   const startGame = (totalRounds = 3) => {
     socket.emit('start-game', { totalRounds }, (response) => {
       if (!response.success) {
-        alert(`Error: ${response.error}`);
+        showToast(`Error: ${response.error}`, { type: 'danger', duration: 4000 });
       }
     });
   };
@@ -179,7 +202,7 @@ function App() {
         setCurrentScreen('game');
         setVoteResult(null);
       } else {
-        alert('Error: No se pudo continuar a la siguiente ronda');
+        showToast('Error: No se pudo continuar a la siguiente ronda', { type: 'danger', duration: 4000 });
       }
     });
   };
@@ -187,7 +210,7 @@ function App() {
   const vote = (targetId) => {
     socket.emit('vote', { targetId }, (response) => {
       if (!response.success) {
-        alert('Error: No se pudo enviar el voto');
+        showToast('Error: No se pudo enviar el voto', { type: 'danger', duration: 3500 });
       }
     });
   };
@@ -215,7 +238,7 @@ function App() {
       if (response.success) {
         setGameState(response.gameState);
       } else {
-        alert('Error: No se pudo resetear el juego');
+        showToast('Error: No se pudo resetear el juego', { type: 'danger', duration: 4000 });
       }
     });
   };
@@ -277,6 +300,14 @@ function App() {
         />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <InnerApp />
+    </ToastProvider>
   );
 }
 

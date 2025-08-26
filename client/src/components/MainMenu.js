@@ -26,7 +26,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
 
   const handleCreateGame = () => {
     if (!username.trim()) {
-      setUsernameError('Por favor ingresa nombre de usuario');
+      setUsernameError('Por favor ingresa un nombre de usuario');
       return;
     }
     setUsernameError('');
@@ -44,7 +44,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
 
   const handleJoinGame = () => {
     if (!username.trim()) {
-      setUsernameError('Por favor ingresa nombre de usuario');
+      setUsernameError('Por favor ingresa un nombre de usuario');
       return;
     }
     if (!joinGameId.trim()) {
@@ -61,7 +61,12 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
       <div className="card max-w-md w-full text-center animate-fade-in">
         <div className="mb-8">
           <div className="flex items-center justify-center mb-4">
-            <Icons.Soccer className="w-12 h-12 text-warning-400 mr-3" />
+            <svg className="w-9 h-9 text-warning-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 1.74.63 3.34 1.68 4.58L12 20l5.32-6.42C18.37 12.34 19 10.74 19 9c0-3.87-3.13-7-7-7z" />
+              <circle cx="9" cy="9" r="1" />
+              <circle cx="15" cy="9" r="1" />
+              <path d="M8 13s1 1 4 1 4-1 4-1" />
+            </svg>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-warning-400 to-warning-600 bg-clip-text text-transparent">
               El Impostor
             </h1>
@@ -77,7 +82,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
               <Icons.User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
               <input
                 type="text"
-                placeholder="Ingresa nombre de usuario"
+                placeholder="Nombre de usuario"
                 value={username}
                 onChange={(e) => {
                   setUsername(e.target.value);
@@ -99,7 +104,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
           {!showJoinForm && (
             <div className="flex items-center justify-between p-4 bg-white bg-opacity-10 rounded-lg border border-white border-opacity-20">
               <div className="flex items-center space-x-3">
-                <Icons.Robot className="w-5 h-5 text-primary-400" />
+                <Icons.Robot className="w-10 h-10 text-primary-400" />
                 <div>
                   <p className="font-medium">Modo de Práctica con Bots</p>
                   <p className="text-sm text-gray-300">Juega solo con jugadores controlados por IA</p>
@@ -107,13 +112,13 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
               </div>
               <button
                 onClick={() => setEnableBots(!enableBots)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                className={`relative inline-flex h-7 w-14 sm:h-6 sm:w-11 items-center rounded-full transition-colors p-1 overflow-hidden ${
                   enableBots ? 'bg-primary-500' : 'bg-gray-600'
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    enableBots ? 'translate-x-6' : 'translate-x-1'
+                  className={`inline-block h-4 w-4 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${
+                    enableBots ? 'translate-x-3.5 sm:translate-x-4' : 'translate-x-1 sm:translate-x-0.5'
                   }`}
                 />
               </button>
@@ -126,10 +131,12 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
             <>
               <button 
                 onClick={handleCreateGame}
-                className="btn-primary w-full flex items-center justify-center space-x-2"
+                className="btn-primary w-full flex items-center justify-center"
               >
-                <Icons.Stadium className="w-5 h-5" />
-                <span>Crear Nueva Sala</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <span>Crear Lobby</span>
               </button>
               
               <button 
@@ -137,10 +144,13 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
                   setShowJoinForm(true);
                   setUsernameError(''); // Limpiar error al cambiar de vista
                 }}
-                className="btn-warning w-full flex items-center justify-center space-x-2"
+                className="btn-warning w-full flex items-center justify-center"
               >
-                <Icons.Door className="w-5 h-5" />
-                <span>Unirse a Sala Existente</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4v6a4 4 0 0 0 4 4h6" />
+                  <path d="M13 10l4 4-4 4" />
+                </svg>
+                <span>Unirse a Lobby</span>
               </button>
             </>
           ) : (
@@ -150,7 +160,7 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
                   <Icons.Cards className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
                   <input
                     type="text"
-                    placeholder="Ingresar código de sala"
+                    placeholder="Código de lobby"
                     value={joinGameId}
                     onChange={(e) => {
                       const upper = (e.target.value || '').toUpperCase();
@@ -172,9 +182,12 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
               <div className="flex space-x-3">
                 <button 
                   onClick={handleJoinGame}
-                  className="btn-primary flex-1 flex items-center justify-center space-x-2"
+                  className="btn-primary flex-1 flex items-center justify-center"
                 >
-                  <Icons.Door className="w-4 h-4" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4v6a4 4 0 0 0 4 4h6" />
+                    <path d="M13 10l4 4-4 4" />
+                  </svg>
                   <span>Unirse</span>
                 </button>
                 
@@ -200,7 +213,12 @@ const MainMenu = ({ onCreateGame, onJoinGame, gameId }) => {
               <span>3-6 jugadores</span>
             </div>
             <div className="flex items-center space-x-1">
-              <Icons.Soccer className="w-4 h-4" />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 1.74.63 3.34 1.68 4.58L12 20l5.32-6.42C18.37 12.34 19 10.74 19 9c0-3.87-3.13-7-7-7z" />
+                <circle cx="9" cy="9" r="1" />
+                <circle cx="15" cy="9" r="1" />
+                <path d="M8 13s1 1 4 1 4-1 4-1" />
+              </svg>
               <span>Tiempo real</span>
             </div>
           </div>

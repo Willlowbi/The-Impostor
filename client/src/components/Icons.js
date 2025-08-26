@@ -2,23 +2,25 @@ import React from 'react';
 
 // Componente de iconos SVG con estilo outline
 export const Icons = {
-  // Fútbol
+  // Balón estilizado
   Soccer: ({ className = "w-6 h-6", ...props }) => (
-    <svg className={className} {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-      <path d="M2 12h20" />
-      <path d="M12 2a14.5 14.5 0 0 1 0 20" />
+    <svg className={className} {...props} viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="12" r="10" className="text-gray-200" fill="currentColor" opacity="0.2" />
+      <path d="M12 6l2.5 1.5-.5 2.8L12 12l-2-1.7-.5-2.8L12 6z" className="text-current" />
+      <path d="M4.5 9l3-1.2 2 .8.5 2.8L8 13l-2.8-1.2L4.5 9z" opacity="0.8" />
+      <path d="M19.5 9l-3-1.2-2 .8-.5 2.8L16 13l2.8-1.2.7-2.8z" opacity="0.8" />
+      <path d="M8 13l2 1.7-.5 2.8L7 19l-2.5-2 1-2.6L8 13z" opacity="0.8" />
+      <path d="M16 13l-2 1.7.5 2.8L17 19l2.5-2-1-2.6L16 13z" opacity="0.8" />
     </svg>
   ),
 
-  // Estadio
+  // Estadio estilizado
   Stadium: ({ className = "w-6 h-6", ...props }) => (
-    <svg className={className} {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <rect x="3" y="6" width="18" height="12" rx="2" />
-      <path d="M3 12h18" />
-      <path d="M6 6V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2" />
-      <path d="M6 18v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2" />
+    <svg className={className} {...props} viewBox="0 0 24 24" fill="currentColor">
+      <rect x="3" y="7" width="18" height="10" rx="2" opacity="0.2" />
+      <path d="M3 10h18" />
+      <path d="M7 7V5h10v2" />
+      <path d="M7 17v2h10v-2" />
     </svg>
   ),
 
@@ -98,8 +100,8 @@ export const Icons = {
   X: ({ className = "w-6 h-6", ...props }) => (
     <svg className={className} {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <circle cx="12" cy="12" r="10" />
-      <path d="15 9l-6 6" />
-      <path d="9 9l6 6" />
+      <path d="M15 9l-6 6" />
+      <path d="M9 9l6 6" />
     </svg>
   ),
 

@@ -116,7 +116,7 @@ const VoteResults = ({ result, gameState, username, onContinueRound, onExitGame,
           title: "Inocente Eliminado",
           message: `¡${result.eliminated.username} era inocente y ha sido eliminado!`,
           color: "danger",
-          icon: <Icons.Skull className="w-8 h-8 text-danger-400 mx-auto mb-2" />
+          icon: <Icons.Mask className="w-8 h-8 text-danger-400 mx-auto mb-2" />
         };
       }
     }
